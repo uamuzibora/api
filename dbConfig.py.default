@@ -1,0 +1,9 @@
+host="localhost"
+login='login'
+password="password"
+database='openmrs'
+mch_database='mch'
+mongo_username="username"
+mongo_password="password"
+mongo_api_username="api_user"
+mongo_api_password="password"
