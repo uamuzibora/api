@@ -5,6 +5,22 @@ from misc_functions import *
 import math
 import copy
 
+def locations(database="openmrs_aggregation"):
+    connection=pymongo.MongoClient()
+    db=connection[database]
+    db.authenticate(dbConfig.mongo_username,dbConfig.mongo_password)
+    collection=db.aggregate
+    collection=db.aggregate
+    data={}
+    locations=[]
+    for entry in collection.find():
+        for location in entry["enrolled"].keys():
+            if location not in locations:
+                locations.append(location)
+    return locations
+
+    
+
 def patients(database="openmrs_aggregation"):
     connection=pymongo.MongoClient()
     db=connection[database]

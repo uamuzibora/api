@@ -3,31 +3,36 @@ import datetime
 import get_data
 import api_key
 import helper_functions
+base_url="/api"
 
-@route('/hiv/<req>')
+@route(base_url+"/locations/hiv")
+def locations_hiv():
+    return {"locations":get_data.locations(database="openmrs_aggregation")}
+
+@route(base_url+'/hiv/<req>')
 def hiv(req):
     return get_data.dashboard(req)
 
-@route('/mch/<req>')
+@route(base_url+'/mch/<req>')
 def mch(req):
     return get_data.mch_dashboard(req)
 
-@route('/hiv/total_patients')
+@route(base_url+'/hiv/total_patients')
 def hiv_total_patients():
     return {"total_patients":get_data.total_patients(database="openmrs_aggregation")}
 
-@route('/mch/total_patients')
+@route(base_url+'/mch/total_patients')
 def mch_total_patients():
     return {"total_patients":get_data.total_patients(database="mch_aggregation")}
 
-@route('/performance/hiv')
+@route(base_url+'/performance/hiv')
 def performace_hiv():
     if api_key.check_key(request.query.api_key,"hiv"):
         api_key.accessed(request.query.api_key)
         return get_data.performance(database="openmrs_aggregation")
     else:
         abort(401, "Access denied.")
-@route('/performance/hiv/<date>')
+@route(base_url+'/performance/hiv/<date>')
 def performace_hiv(date):
     if api_key.check_key(request.query.api_key,"hiv"):
         api_key.accessed(request.query.api_key)
@@ -40,14 +45,14 @@ def performace_hiv(date):
     else:
         abort(401, "Access denied.")        
 
-@route('/performance/mch')
+@route(base_url+'/performance/mch')
 def performace_mch():
     if api_key.check_key(request.query.api_key,"mch"):
         api_key.accessed(request.query.api_key)
         return get_data.performance(database="mch_aggregation")
     else:
         abort(401, "Access denied.")
-@route('/performance/mch/<date>')
+@route(base_url+'/performance/mch/<date>')
 def performace_mch(date):
     if api_key.check_key(request.query.api_key,"mch"):
         api_key.accessed(request.query.api_key)
@@ -61,7 +66,7 @@ def performace_mch(date):
     else:
         abort(401, "Access denied.")        
 
-@route('/patients/mch')
+@route(base_url+'/patients/mch')
 def patients_mch():
     if api_key.check_key(request.query.api_key,"mch"):
         api_key.accessed(request.query.api_key)
@@ -73,7 +78,7 @@ def patients_mch():
             return get_data.patients(database="mch_aggregation")
     else:
         abort(401, "Access denied.")
-@route('/patients/hiv')
+@route(base_url+'/patients/hiv')
 def patients_hiv():
     if api_key.check_key(request.query.api_key,"hiv"):
         api_key.accessed(request.query.api_key)
@@ -85,7 +90,7 @@ def patients_hiv():
             return {'patients':get_data.patients(database="openmrs_aggregation")}
     else:
         abort(401, "Access denied.")
-@route('/report/hiv/<location>')
+@route(base_url+'/report/hiv/<location>')
 def report_hiv(location):
 
     if request.query.start:
