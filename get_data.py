@@ -13,8 +13,12 @@ def locations(database="openmrs_aggregation"):
     collection=db.aggregate
     data={}
     locations=[]
+    key="enrolled"
+    if database=="mch_aggregation":
+        key="mothers"
+
     for entry in collection.find():
-        for location in entry["enrolled"].keys():
+        for location in entry[key].keys():
             if location not in locations:
                 locations.append(location)
     return locations
@@ -127,51 +131,84 @@ def performance_by_week(first_date,database="openmrs_aggregation"):
                     return_data[visit_type][user][week][1]+=data[visit_type][user][date.strftime("%Y-%m-%d")]
     return return_data
 
-def report(start_date,end_date,location):
+def report_hiv(start_date,end_date,location):
     connection=pymongo.MongoClient()
     db=connection.openmrs_aggregation
     db.authenticate(dbConfig.mongo_username,dbConfig.mongo_password)
     collection=db.patients
-    data={'patient_source':{},'start_art':{},'enrolled':{},'ever_on_art':{},'currently_on_art':{},'eligible_no_art':{},'on_cotrimoxazole':{}}
+    data={'patient_source':{},'art_who':{},'on_cd4':{},"eligible_no_art":{},'exiting_care':{},'missing_data':{}}
     # Go through each patient to compute numbers.
     for p in collection.find():
         #print p
         if (p["location"]==location or location=="all") and "date" in p.keys() and p["date"]:
-            
             group_number=group(p)
             if p["date"]>start_date and p["date"]<end_date:
                 insert(data,'patient_source',None,group_number,text=p['patient_source'])
-            if "first_art_start_date" in p.keys():
-                if p["first_art_start_date"]>start_date and p["first_art_start_date"]<end_date:
-                    insert(data,'start_art',None,group_number,text=p["who_stage_f"])
-            if p["date"]<end_date:
-                insert(data,'enrolled',None,group_number)
-                if "first_art_start_date" in p.keys() and p["first_art_start_date"]<end_date:
-                    insert(data,'ever_on_art',None,group_number)
-                if p["on_art"] and "current_regimen_start_date" in p.keys() and p["current_regimen_start_date"]<end_date:                
-                    #if pregnant
-                    if pregnant(p,end_date):
-                        insert(data,'currently_on_art',None,group_number,text="Pregnant")
-                    else:
-                        insert(data,'currently_on_art',None,group_number,text="All Others")
+                if p["on_art"]:
+                    insert(data,'art_who',None,group_number,text=p["who_stage_f"])
+                first_cd4=p["cd4_count"]["First"]
+                missing=0
+                if first_cd4:
+                    if first_cd4>350:
+                        insert(data,'on_cd4',None,group_number,text=">350")
+                    if first_cd4<350:
+                        insert(data,'on_cd4',None,group_number,text="<350")
+                else:
+                    insert(data,'on_cd4',None,group_number,text="Missing")
+                    insert(data,"missing_data",None,group_number,text="First CD4 Count")             
                 if p["eligible_for_art"] and not p["on_art"]:
-                    insert(data,"eligible_no_art",None,group_number)
-                if p["on_cotrimoxazole"]:
-                    insert(data,"on_cotrimoxazole",None,group_number)
+                    insert(data,"eligible_no_art",None,group_number)             
+                if "inactive_reason" in p:
+                    insert(data,'exiting_care',None,group_number,text=p["inactive_reason"])
+                if "who_stage_f" not in p or p["who_stage_f"]=="Missing":
+                    insert(data,"missing_data",None,group_number,text="First WHO Stage")
+                if "hiv_positive_date" not in p or p["hiv_positive_date"]==0:
+                    insert(data,"missing_data",None,group_number,text="HIV Positive Date")
+                if "art_eligible_date" not in p or p["art_eligible_date"]==0:
+                    insert(data,"missing_data",None,group_number,text="ART Eligible Date")
+    return data
+def report_mch(start_date,end_date,location):
+    connection=pymongo.MongoClient()
+    db=connection.mch_aggregation
+    db.authenticate(dbConfig.mongo_username,dbConfig.mongo_password)
+    collection=db.patients
+    data={'women_enrolled':[0,0],'children_enrolled':[0,0,0,0],'women_hiv':[0,0],"women_art":[0,0],'women_malaria':[0,0],'missing_data':{}}
+    # Go through each patient to compute numbers.
+    for p in collection.find():
+        #print p
+        if (p["location"]==location or location=="all") and "date" in p.keys() and p["date"]:
+            group_number=group(p)
+            if p["date"]>start_date and p["date"]<end_date:
+
+                if p["age"]>5:#Women
+                    if p["age"]>18:
+                        group_number=1
+                    else:
+                        group_number=0
+
+                    data['women_enrolled'][group_number]+=1
+                    if p["hiv"]==703:
+                        data['women_hiv'][group_number]+=1
+                    elif p["hiv"]==1118 or p["hiv"]=="Missing":
+                        insert_mch(data,'missing_data',"Screened for HIV",group_number=group_number)
+                    if p["mother_art"]==1:
+                        data['women_art'][group_number]+=1
+                    if p["IPT1"]==1 and p["IPT2"]==1 and p["IPT3"]==1:
+                        data['women_malaria'][group_number]+=1
+                    if p["tb"]==6103 or p["tb"]=="Missing":
+                        insert_mch(data,'missing_data',"Screened for TB",group_number=group_number)
+                    if p["hypertension"]=="Missing":
+                        insert_mch(data,'missing_data',"History of high BP",group_number=group_number)
+                    if p["malaria"]==1118 or p["malaria"]=="Missing":
+                        insert_mch(data,'missing_data',"Screened for Malaria",group_number=group_number)
+                else:
+                    data['children_enrolled'][group_mch(p)]+=1
     return data
 
-def pregnant(p,end_date):
-    if p["pregnancy"]==0:
-        return False
-    else:
-        for date in p["pregnancy"]:
-            date_diff=end_date-date
-            if date_diff.days<9*30: #9 months
-                return True
-    return False
+
 if __name__=="__main__":
     import datetime
-    print patients()
-   # print report(datetime.datetime.now()-datetime.timedelta(days=365*100),datetime.datetime.now(),"all")
+    #print patients()
+    print report_mch(datetime.datetime.now()-datetime.timedelta(days=365*100),datetime.datetime.now(),"Manyuanda Clinic")
 #    data=hiv_performance_by_week("1990-10-05")
 

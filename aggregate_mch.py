@@ -34,15 +34,6 @@ data={} # Master directory with all patient information
 
 # Three kinds of observation datatypes
 
-#  Multiple text 
-#multiple_text={"who_stage_f":5356,"who_stage_l":5356,"patient_source":6245,"reason_to_follow_up":6281}
-#which={"who_stage_f":"first","who_stage_l":"last","patient_source":"first","reason_to_follow_up":"last"}
-# Multiple numeric
-#multiple_numeric={"cd4_count":5497}
-#Boolean
-#boolean_sql={"eligible_for_art":"select patient_id from patient where patient_id in (select distinct(person_id) from obs where concept_id=5356 and (value_coded=1206 or value_coded=1207) and voided=0) or patient_id in (select distinct(person_id) from obs where concept_id=5497 and value_numeric<350 and voided=0)","hiv_positive_date":"select distinct(person_id) as patient_id from obs where obs.concept_id=6259","art_eligible_date":"select distinct(person_id) as patient_id from obs where obs.concept_id=6260","on_art":"select patient_id from (select start_date,patient_id from orders where discontinued=0 and voided=0 group by start_date,patient_id ) as s order by start_date","followed_up":"select patient_id from encounter where form_id=4 and voided=0","on_cotrimoxazole":"select distinct(person_id) as patient_id from obs where concept_id=6113"}
-
-
 # Get all patient ids and other needed fields from the patient table
 res=db.query_dict('Select patient_id from patient where voided=0 order by patient_id')
 for r in res:
@@ -247,6 +238,7 @@ db_mongo.authenticate(mongo_username,mongo_password)
 collection=db_mongo.patients
 collection.remove()
 for pid in data.keys():
+    print data[pid]
     collection.insert(data[pid])
  
 collection=db_mongo.aggregate

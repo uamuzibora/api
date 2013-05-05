@@ -8,6 +8,9 @@ base_url="/api"
 @route(base_url+"/locations/hiv")
 def locations_hiv():
     return {"locations":get_data.locations(database="openmrs_aggregation")}
+@route(base_url+"/locations/mch")
+def locations_hiv():
+    return {"locations":get_data.locations(database="mch_aggregation")}
 
 @route(base_url+'/hiv/<req>')
 def hiv(req):
@@ -103,7 +106,20 @@ def report_hiv(location):
         end=datetime.datetime.strptime(end,"%d/%m/%Y")
     else:
         end=datetime.datetime.now()
-    return get_data.report(start,end,location)
+    return get_data.report_hiv(start,end,location)
+@route(base_url+'/report/mch/<location>')
+def report_hiv(location):
+    if request.query.start:
+        start=request.query.start
+        start=datetime.datetime.strptime(start,"%d/%m/%Y")
+    else:
+        start=datetime.datetime(1990,1,1)
+    if request.query.end:
+        end=request.query.end
+        end=datetime.datetime.strptime(end,"%d/%m/%Y")
+    else:
+        end=datetime.datetime.now()
+    return get_data.report_mch(start,end,location)
 
 
 
