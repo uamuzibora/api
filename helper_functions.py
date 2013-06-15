@@ -29,6 +29,9 @@ def patients_to_csv(data):
             if h=="cd4_count":
                 output.write(str(patient["cd4_count"]["First"])+","+str(patient["cd4_count"]["Last"])+","+str(patient["cd4_count"]["Mean"])+","+str(patient["cd4_count"]["Regression"])+",")
             else:
-                output.write(str(patient[h])+",")
+                if h in patient.keys():
+                    output.write(str(patient[h])+",")
+                else:
+                    output.write(",")
     return output.getvalue()
     

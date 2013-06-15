@@ -174,10 +174,17 @@ def report_mch(start_date,end_date,location):
     collection=db.patients
     data={'women_enrolled':[0,0],'children_enrolled':[0,0,0,0],'women_hiv':[0,0],"women_art":[0,0],'women_malaria':[0,0],'missing_data':{}}
     # Go through each patient to compute numbers.
+
+    i=0
     for p in collection.find():
-        #print p
+
+        print i
+
+ #print p
         if (p["location"]==location or location=="all") and "date" in p.keys() and p["date"]:
+            i+=1
             group_number=group(p)
+
             if p["date"]>start_date and p["date"]<end_date:
 
                 if p["age"]>5:#Women
@@ -209,6 +216,6 @@ def report_mch(start_date,end_date,location):
 if __name__=="__main__":
     import datetime
     #print patients()
-    print report_mch(datetime.datetime.now()-datetime.timedelta(days=365*100),datetime.datetime.now(),"Manyuanda Clinic")
+    print report_mch(datetime.datetime.now()-datetime.timedelta(days=365*100),datetime.datetime.now(),"all")
 #    data=hiv_performance_by_week("1990-10-05")
 
