@@ -28,6 +28,13 @@ def patients_to_csv(data):
         for h in headers:
             if h=="cd4_count":
                 output.write(str(patient["cd4_count"]["First"])+","+str(patient["cd4_count"]["Last"])+","+str(patient["cd4_count"]["Mean"])+","+str(patient["cd4_count"]["Regression"])+",")
+            elif h=="pregnancy":
+                if patient[h]==0:
+                    output.write(str(patient[h])+",")
+                else:
+                    for p in patient[h]:
+                        output.write(p+"&")
+                    output.write(",")
             else:
                 if h in patient.keys():
                     output.write(str(patient[h])+",")

@@ -35,8 +35,10 @@ data={} # Master directory with all patient information
 # Three kinds of observation datatypes
 
 #  Multiple text 
-multiple_text={"who_stage_f":5356,"who_stage_l":5356,"patient_source":6245,"reason_to_follow_up":6281}
-which={"who_stage_f":"first","who_stage_l":"last","patient_source":"first","reason_to_follow_up":"last"}
+multiple_text={"who_stage_f":5356,"who_stage_l":5356,"patient_source":6245,"reason_to_follow_up":6281,"last_adherence":6118}
+which={"who_stage_f":"first","who_stage_l":"last","patient_source":"first","reason_to_follow_up":"last","last_adherence":"last"}
+multiple_dates={"next_appointment":5096}
+which_dates={"next_appointment":"last"}
 # Multiple numeric
 multiple_numeric={"cd4_count":5497}
 #Boolean
@@ -101,15 +103,17 @@ for r in res:
     data[r['person_id']]["inactive_reason"]=text
 print "status"
 # Get Status
-res=db.query_dict("SELECT obs.person_id from obs where obs.concept_id = 6153 and voided=0")
-patients_with_observation=[]
+res=db.query_dict("SELECT obs.person_id,obs.value_coded from obs where obs.concept_id = 6153 and voided=0")
+patients_with_observation={}
+
 for r in res:
-    patients_with_observation.append(r['person_id'])
+    patients_with_observation[r['person_id']]=r["value_coded"]
 for key in data.keys():
-    if key in patients_with_observation:
-        data[key]["status"]=1
-    else:
+    if key in patients_with_observation.keys():
         data[key]["status"]=0
+    else:
+        data[key]["status"]=1
+        data[key]["inactive_reason"]=""       
 print "status"
 # Get Willing to Return
 res=db.query_dict("SELECT obs.person_id from obs where obs.concept_id = 6286 and voided=0")
@@ -186,6 +190,28 @@ for field in multiple_text.keys():
             text=lo[0]['name']
             lookup[concept]=text
         data[key][field]=text
+
+print "multiple dates"
+       
+for field in multiple_dates.keys():
+    res=db.query_dict("SELECT obs.person_id,obs.value_datetime,enc.encounter_datetime from obs JOIN encounter as enc on enc.encounter_id=obs.encounter_id where obs.concept_id = %s and obs.voided=0 order by enc.encounter_datetime",multiple_dates[field])
+
+    temp={}
+    lookup={}
+    for r in res:
+        if r['person_id'] in temp.keys():
+            temp[r['person_id']][r['encounter_datetime']]=r['value_datetime']
+        else:
+            temp[r['person_id']]={r['encounter_datetime']:r['value_datetime']}
+    for key in temp.keys():
+        dates=sorted(temp[key].keys())
+        if which_dates[field]=="last":
+            date=dates[-1]
+        elif which_dates[field]=="first":
+            date=dates[0]
+        data[key][field]=temp[key][date]
+
+
 print "Boolean sql"
 #Boolean sql
 for field in boolean_sql.keys():
@@ -204,9 +230,13 @@ for d in data:
     for f in multiple_numeric.keys():
         if f not in data[d].keys():
             data[d][f]={'Mean':None,'First':None, 'Last':None,'Regression':None};
-    for f in multiple_text.keys()+["location"]:
+    for f in multiple_text.keys()+["location"]+multiple_dates.keys():
          if f not in data[d].keys():       
              data[d][f]="Missing"
+    if "current_regimen_start_date" not in data[d].keys():
+        data[d]["current_regimen_start_date"]=""
+    if "regimen_sum" not in data[d].keys():
+        data[d]["regimen_sum"]=0
              
 
 print "Finished getting data. ",len(data.keys())
@@ -277,6 +307,7 @@ db_mongo.authenticate(mongo_username,mongo_password)
 collection=db_mongo.patients
 collection.remove()
 for pid in data.keys():
+    data[pid]["pid"]=pid
     collection.insert(data[pid])
  
 collection=db_mongo.aggregate

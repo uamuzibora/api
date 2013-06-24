@@ -102,7 +102,7 @@ for r in res:
     data[r["patient_id"]]["delivery_visit"]=1
 
 for key in boolean_concepts.keys():
-    res=db.query_dict("SELECT person_id,value_numeric from obs where concept_id=%s and voided=0",boolean_concepts[key])
+    res=db.query_dict("SELECT person_id,value_numeric from obs  where concept_id=%s and voided=0",boolean_concepts[key])
     for r in res:
         data[r['person_id']][key]=r['value_numeric']
 
@@ -114,7 +114,7 @@ for field in coded.keys():
         data[r['person_id']][field]=r['value_coded']
 
 for field in coded_words.keys():
-    res=db.query_dict("SELECT obs.person_id,obs.value_coded from obs where obs.concept_id = %s and obs.voided=0", coded_words[field])
+    res=db.query_dict("SELECT obs.person_id,obs.value_coded from obs inner join encounter on obs.encounter_id=encounter.encounter_id where obs.concept_id = %s and obs.voided=0 and form_id=8", coded_words[field])
     temp={}
     lookup={}
     for r in res:
@@ -132,9 +132,7 @@ for d in data.keys():
     for f in boolean_concepts.keys():
         if f not in data[d].keys():
             data[d][f]="Missing"
-    for f in coded_words.keys():
-        if f not in data[d].keys():       
-            data[d][f]="Missing"
+
     for f in coded.keys()+["location"]:
          if f not in data[d].keys():       
              data[d][f]="Missing"
@@ -142,6 +140,13 @@ for d in data.keys():
         data[d]["number_of_visits"]=0
     if "delivery_visit" not in data[d].keys():
         data[d]["delivery_visit"]=0
+        for f in coded_words.keys():
+            if f not in data[d].keys():       
+                data[d][f]="Missing"#Think about this
+    else:
+        for f in coded_words.keys():
+            if f not in data[d].keys():       
+                data[d][f]="Missing"
 
 print "Finished getting data. ",len(data.keys())
 
@@ -238,7 +243,7 @@ db_mongo.authenticate(mongo_username,mongo_password)
 collection=db_mongo.patients
 collection.remove()
 for pid in data.keys():
-    print data[pid]
+    data[pid]["pid"]=pid
     collection.insert(data[pid])
  
 collection=db_mongo.aggregate
