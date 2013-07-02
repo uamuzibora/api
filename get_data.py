@@ -158,7 +158,7 @@ def report_hiv(start_date,end_date,location):
                     insert(data,"missing_data",None,group_number,text="First CD4 Count")             
                 if p["eligible_for_art"] and not p["on_art"]:
                     insert(data,"eligible_no_art",None,group_number)             
-                if "inactive_reason" in p:
+                if "inactive_reason" in p and p["inactive_reason"]:
                     insert(data,'exiting_care',None,group_number,text=p["inactive_reason"])
                 if "who_stage_f" not in p or p["who_stage_f"]=="Missing":
                     insert(data,"missing_data",None,group_number,text="First WHO Stage")
@@ -216,6 +216,6 @@ def report_mch(start_date,end_date,location):
 if __name__=="__main__":
     import datetime
     #print patients()
-    print report_mch(datetime.datetime.now()-datetime.timedelta(days=365*100),datetime.datetime.now(),"all")
+    print report_hiv(datetime.datetime.now()-datetime.timedelta(days=365*100),datetime.datetime.now(),"all")
 #    data=hiv_performance_by_week("1990-10-05")
 
