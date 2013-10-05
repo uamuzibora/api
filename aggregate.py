@@ -35,16 +35,17 @@ data={} # Master directory with all patient information
 # Three kinds of observation datatypes
 
 #  Multiple text 
-multiple_text={"who_stage_f":5356,"who_stage_l":5356,"patient_source":6245,"reason_to_follow_up":6281,"last_adherence":6118}
-which={"who_stage_f":"first","who_stage_l":"last","patient_source":"first","reason_to_follow_up":"last","last_adherence":"last"}
+multiple_text={"who_stage_f":5356,"who_stage_l":5356,"patient_source":6245,"reason_to_follow_up":6281,"last_adherence":6118,"eoa_notstartedart":6496,"eoa_notreviewed":6498}
+which={"who_stage_f":"first","who_stage_l":"last","patient_source":"first","reason_to_follow_up":"last","last_adherence":"last","eoa_notstartedart":"last","eoa_notreviewed":"last"}
 multiple_dates={"next_appointment":5096}
 which_dates={"next_appointment":"last"}
 # Multiple numeric
 multiple_numeric={"cd4_count":5497}
 #Boolean
 boolean_sql={"eligible_for_art":"select patient_id from patient where patient_id in (select distinct(person_id) from obs where concept_id=5356 and (value_coded=1206 or value_coded=1207) and voided=0) or patient_id in (select distinct(person_id) from obs where concept_id=5497 and value_numeric<350 and voided=0)","hiv_positive_date":"select distinct(person_id) as patient_id from obs where obs.concept_id=6259","art_eligible_date":"select distinct(person_id) as patient_id from obs where obs.concept_id=6260","on_art":"select patient_id from (select start_date,patient_id from orders where discontinued=0 and voided=0 group by start_date,patient_id ) as s order by start_date","followed_up":"select patient_id from encounter where form_id=4 and voided=0","on_cotrimoxazole":"select distinct(person_id) as patient_id from obs where concept_id=6113"}
-
-
+#Multpile Boolean
+multiple_boolean={"eoa_paper":6491,"eoa_clinicalreview":6492,"eoa_startedart":6499}
+which_boolean={"eoa_paper":"last","eoa_clinicalreview":"last","eoa_startedart":"last"}
 # Get all patient ids and other needed fields from the patient table
 res=db.query_dict('Select patient_id from patient where voided=0 order by patient_id')
 for r in res:
@@ -211,6 +212,24 @@ for field in multiple_dates.keys():
             date=dates[0]
         data[key][field]=temp[key][date]
 
+print "multiple boolean"
+for field in multiple_boolean.keys():
+    res=db.query_dict("SELECT obs.person_id,obs.value_numeric,enc.encounter_datetime from obs JOIN encounter as enc on enc.encounter_id=obs.encounter_id where obs.concept_id = %s and obs.voided=0 order by enc.encounter_datetime",multiple_boolean[field])
+    temp={}
+    lookup={}
+    for r in res:
+        if r['person_id'] in temp.keys():
+            temp[r['person_id']][r['encounter_datetime']]=r['value_numeric']
+        else:
+            temp[r['person_id']]={r['encounter_datetime']:r['value_numeric']}
+    for key in temp.keys():
+        dates=sorted(temp[key].keys())
+        if which_boolean[field]=="last":
+            boolean=dates[-1]
+        elif which_boolean[field]=="first":
+            boolean=dates[0]
+        data[key][field]=temp[key][boolean]
+
 
 print "Boolean sql"
 #Boolean sql
@@ -230,7 +249,7 @@ for d in data:
     for f in multiple_numeric.keys():
         if f not in data[d].keys():
             data[d][f]={'Mean':None,'First':None, 'Last':None,'Regression':None};
-    for f in multiple_text.keys()+["location"]+multiple_dates.keys():
+    for f in multiple_text.keys()+["location"]+multiple_dates.keys()+multiple_boolean.keys():
          if f not in data[d].keys():       
              data[d][f]="Missing"
     if "current_regimen_start_date" not in data[d].keys():
@@ -242,10 +261,15 @@ for d in data:
 print "Finished getting data. ",len(data.keys())
 # Calculate Aggregates:
 
+#print data
+#import sys
+#sys.exit()
+
+
 age_limit=14
 t=datetime.datetime.now()
 #t=datetime.datetime(2013,3,26)
-aggregate={"enrolled":{},"patient_source":{},"eligible_no_art":{},"willing_to_return":{},"on_art_who":{},"inactive_reason":{},"reason_to_follow_up":{},"followed_up":{},"first_who":{},"first_cd4":{}, "timestamp": t,"eligible_for_art":{},"complete_records":{}, "missing":{}}
+aggregate={"enrolled":{},"patient_source":{},"eligible_no_art":{},"eligible_no_art_active":{},"eligible_active":{},"willing_to_return":{},"on_art_who":{},"inactive_reason":{},"reason_to_follow_up":{},"followed_up":{},"first_who":{},"first_cd4":{}, "timestamp": t,"eligible_for_art":{},"complete_records":{}, "missing":{}}
 
 for patient in data.keys():
     p=data[patient]
@@ -272,8 +296,12 @@ for patient in data.keys():
                 source=data[patient][field]
                 insert(aggregate,'patient_source',location,group_number,text=source)
             if field=="eligible_for_art":
+                if p["status"]==1:
+                    insert(aggregate,"eligible_active",location,group_number)
                 if p[field] and not p["on_art"]:
                     insert(aggregate,"eligible_no_art",location,group_number)
+                    if p["status"]==1:
+                        insert(aggregate,"eligible_no_art_active",location,group_number)
             if field=="followed_up" and p[field]:
                 insert(aggregate,"followed_up",location,group_number)
             if field=="willing_to_return" and p[field]:
