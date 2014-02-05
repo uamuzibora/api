@@ -15,6 +15,13 @@ def weeks_to_csv(data):
         output.write("\n")
     return output.getvalue()
 
+def verification_to_csv(data):
+    output=StringIO.StringIO()
+    output.write("Location,pid\n")
+    for key in data.keys():
+        for pid in data[key]:
+            output.write(key+","+str(pid)+"\n")
+    return output.getvalue()
 def patients_to_csv(data):
     output=StringIO.StringIO()
     headers=sorted(data[0].keys())
@@ -23,12 +30,20 @@ def patients_to_csv(data):
             output.write("first cd4,last cd4,mean cd4,regression cd4,")
         else:
             output.write(h+",")
-    for patient in data:
+    for k in data.keys():
+        patient=data[k]
         output.write("\n")
         for h in headers:
             if h=="cd4_count":
                 output.write(str(patient["cd4_count"]["First"])+","+str(patient["cd4_count"]["Last"])+","+str(patient["cd4_count"]["Mean"])+","+str(patient["cd4_count"]["Regression"])+",")
             elif h=="pregnancy":
+                if patient[h]==0:
+                    output.write(str(patient[h])+",")
+                else:
+                    for p in patient[h]:
+                        output.write(p+"&")
+                    output.write(",")
+            elif h=="edd":
                 if patient[h]==0:
                     output.write(str(patient[h])+",")
                 else:

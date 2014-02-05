@@ -2,6 +2,7 @@ import dbConfig
 import pymongo
 import datetime
 from misc_functions import *
+import helper_functions
 import math
 import copy
 
@@ -38,6 +39,10 @@ def patients(database="openmrs_aggregation"):
                 entry["date"]=entry["date"].isoformat()
             else:
                 entry["date"]=""
+            if "next_appointment" in entry.keys() and entry["next_appointment"] and entry["next_appointment"] !="Missing":
+                entry["next_appointment"]=entry["next_appointment"].isoformat()
+            else:
+                entry["next_appointment"]=""
             if "first_art_start_date" in entry.keys() and entry["first_art_start_date"]:
                     entry["first_art_start_date"]=entry["first_art_start_date"].isoformat()
             else:
@@ -51,9 +56,66 @@ def patients(database="openmrs_aggregation"):
                 for i in entry["pregnancy"]:
                     tmp.append(i.isoformat())
                 entry["pregnancy"]=tmp
-            print entry
+            if entry["edd"]:
+                tmp=[]
+                for i in entry["edd"]:
+                    if i!="Missing":
+                        tmp.append(i.isoformat())
+                    else:
+                        tmp.append("Missing")
+                entry["edd"]=tmp
         data.append(entry)
-    return data
+
+    return {i:j for i,j in enumerate(data)}
+
+
+def neel(database="openmrs_aggregation"):
+    connection=pymongo.MongoClient()
+    db=connection[database]
+    db.authenticate(dbConfig.mongo_username,dbConfig.mongo_password)
+    collection=db.patients
+    data=[]
+    for entry in collection.find():
+        if entry["location"] in ["Kakamega PGH MCH","Vihiga DH MCH"]:
+            del entry["_id"]
+            if database=="openmrs_aggregation":
+                if "date" in entry.keys() and entry["date"]:
+                    entry["date"]=entry["date"].isoformat()
+                else:
+                    entry["date"]=""
+                if "next_appointment" in entry.keys() and entry["next_appointment"] and entry["next_appointment"] !="Missing":
+                    entry["next_appointment"]=entry["next_appointment"].isoformat()
+                else:
+                    entry["next_appointment"]=""
+                if "first_art_start_date" in entry.keys() and entry["first_art_start_date"]:
+                    entry["first_art_start_date"]=entry["first_art_start_date"].isoformat()
+                else:
+                    entry["first_art_start_date"]=""
+                if "current_regimen_start_date" in entry.keys() and entry["current_regimen_start_date"]:
+                    entry["current_regimen_start_date"]=entry["current_regimen_start_date"].isoformat()
+                else:
+                    entry["current_regimen_start_date"]=""
+                if entry["pregnancy"]:
+                    tmp=[]
+                    for i in entry["pregnancy"]:
+                        tmp.append(i.isoformat())
+                        entry["pregnancy"]=tmp
+                if entry["edd"]:
+                    tmp=[]
+                    for i in entry["edd"]:
+                        if i!="Missing":
+                            tmp.append(i.isoformat())
+                        else:
+                            tmp.append("Missing")
+                        entry["edd"]=tmp
+                for key in entry.keys():
+                    if key not in ["pid","location","age","sex","hiv_positive_date","patient_source","eligible_for_art","art_eligible_date","cd4_present","cd4_count","who_stage_f","who_stage_l","on_art","first_art_start_date","current_regimen_start_date","regimen_sum","on_cotrimoxazole","date","next_appointment","pregnancy","edd"]:
+                        del entry[key]
+                    
+                data.append(entry)
+
+    return {i:j for i,j in enumerate(data)}
+
 
 def total_patients(database="openmrs_aggregation"):
     connection=pymongo.MongoClient()
@@ -212,10 +274,83 @@ def report_mch(start_date,end_date,location):
                     data['children_enrolled'][group_mch(p)]+=1
     return data
 
-
+def verification_who(database="openmrs_aggregation"):
+    connection=pymongo.MongoClient()
+    db=connection[database]
+    db.authenticate(dbConfig.mongo_username,dbConfig.mongo_password)
+    collection=db.patients
+    data={}
+    for entry in collection.find():
+        if entry["who_stage_f"]=="Missing":
+            location=entry["location"]
+            if location in data.keys():
+                data[location].append(int(entry["pid"]))
+            else:
+                data[location]=[int(entry["pid"])]
+    return data
+def verification_cd4(database="openmrs_aggregation"):
+    connection=pymongo.MongoClient()
+    db=connection[database]
+    db.authenticate(dbConfig.mongo_username,dbConfig.mongo_password)
+    collection=db.patients
+    data={}
+    for entry in collection.find():
+        if entry["cd4_count"]["First"]=="Missing" or entry["cd4_count"]["First"]==None :
+            location=entry["location"]
+            if location in data.keys():
+                data[location].append(int(entry["pid"]))
+            else:
+                data[location]=[int(entry["pid"])]
+    return data
+def verification_followup(database="openmrs_aggregation"):
+    connection=pymongo.MongoClient()
+    db=connection[database]
+    db.authenticate(dbConfig.mongo_username,dbConfig.mongo_password)
+    collection=db.patients
+    data={}
+    for entry in collection.find():
+        if entry["inactive_reason"]=="LOST TO FOLLOWUP":
+            location=entry["location"]
+            if location in data.keys():
+                data[location].append(int(entry["pid"]))
+            else:
+                data[location]=[int(entry["pid"])]
+    return data
+def verification_missed_appointment(database="openmrs_aggregation"):
+    connection=pymongo.MongoClient()
+    db=connection[database]
+    db.authenticate(dbConfig.mongo_username,dbConfig.mongo_password)
+    collection=db.patients
+    data={}
+    today=datetime.datetime.now()
+    for entry in collection.find():
+        if type(entry["next_appointment"])==datetime.datetime:
+            if (today-entry["next_appointment"]).days>14:
+                location=entry["location"]
+                if location in data.keys():
+                    data[location].append(int(entry["pid"]))
+                else:
+                    data[location]=[int(entry["pid"])]
+    return data
+def verification_eligible(database="openmrs_aggregation"):
+    connection=pymongo.MongoClient()
+    db=connection[database]
+    db.authenticate(dbConfig.mongo_username,dbConfig.mongo_password)
+    collection=db.patients
+    data={}
+    today=datetime.datetime.now()
+    for entry in collection.find():
+        if entry["eligible_for_art"]==1 and entry["on_art"]==0:
+            location=entry["location"]
+            if location in data.keys():
+                data[location].append(int(entry["pid"]))
+            else:
+                data[location]=[int(entry["pid"])]
+    return data
 if __name__=="__main__":
     import datetime
-    #print patients()
-    print report_hiv(datetime.datetime.now()-datetime.timedelta(days=365*100),datetime.datetime.now(),"all")
+    print helper_functions.patients_to_csv(neel())
+
+#    print report_hiv(datetime.datetime.now()-datetime.timedelta(days=365*100),datetime.datetime.now(),"all")
 #    data=hiv_performance_by_week("1990-10-05")
 

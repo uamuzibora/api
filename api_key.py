@@ -6,23 +6,27 @@ connection=pymongo.MongoClient()
 db=connection.api
 db.authenticate(dbConfig.mongo_api_username,dbConfig.mongo_api_password)
 
-def check_key(key,database):
+def check_key(key,database,site):
     collection=db.api_keys
     exists=collection.find_one({'key':key})
     ret=False
     if exists:
-        ret=exists["database"]==database
+        if exists["database"]==database:
+            for i in exists["access"]:
+                if site==i or i=="all":
+                    ret = True
+                    break
     return ret
 
 def accessed(key):
     collection=db.api_keys
     exists=collection.find_one({'key':key})
     if exists:
-        data={"accessed":exists["accessed"]+1,"owner":exists["owner"],"key":exists["key"],"database":exists["database"]}
+        data={"accessed":exists["accessed"]+1,"owner":exists["owner"],"key":exists["key"],"database":exists["database"],"access":exists["access"]}
         collection.update({"_id":exists["_id"]},data)
         
-def add_key(owner,database):
-    #owner should be an email-adress
+def add_key(owner,database,access):
+    #owner should be an email-adress, access a list of accessable sites or all
     salt=random.random()
     key=hashlib.md5()
     key.update(owner+str(salt))
@@ -30,7 +34,7 @@ def add_key(owner,database):
     collection=db.api_keys
     exists=collection.find_one({'owner':owner,"database":database})
     if not exists:
-        collection.insert({"key":key,"owner":owner,"accessed":0,"database":database})
+        collection.insert({"key":key,"owner":owner,"accessed":0,"database":database,"access":access})
         return key
     else:
         return False
@@ -49,10 +53,12 @@ if __name__=="__main__":
     arg=sys.argv[1]
     print arg
     if arg=="add":
-        if len(sys.argv)>3:
+        if len(sys.argv)>4:
             owner=sys.argv[2]
             database=sys.argv[3]
-            print add_key(owner,database)
+            access=sys.argv[4:]
+            print access
+            print add_key(owner,database,access)
     elif arg=="get":
         if len(sys.argv)>2:
             owner=sys.argv[2]

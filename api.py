@@ -30,14 +30,14 @@ def mch_total_patients():
 
 @route(base_url+'/performance/hiv')
 def performace_hiv():
-    if api_key.check_key(request.query.api_key,"hiv"):
+    if api_key.check_key(request.query.api_key,"hiv","performace"):
         api_key.accessed(request.query.api_key)
         return get_data.performance(database="openmrs_aggregation")
     else:
         abort(401, "Access denied.")
 @route(base_url+'/performance/hiv/<date>')
 def performace_hiv(date):
-    if api_key.check_key(request.query.api_key,"hiv"):
+    if api_key.check_key(request.query.api_key,"hiv","performace"):
         api_key.accessed(request.query.api_key)
 
         if request.query.type=="csv":
@@ -50,14 +50,14 @@ def performace_hiv(date):
 
 @route(base_url+'/performance/mch')
 def performace_mch():
-    if api_key.check_key(request.query.api_key,"mch"):
+    if api_key.check_key(request.query.api_key,"mch","performance"):
         api_key.accessed(request.query.api_key)
         return get_data.performance(database="mch_aggregation")
     else:
         abort(401, "Access denied.")
 @route(base_url+'/performance/mch/<date>')
 def performace_mch(date):
-    if api_key.check_key(request.query.api_key,"mch"):
+    if api_key.check_key(request.query.api_key,"mch","performance"):
         api_key.accessed(request.query.api_key)
         print request.query.type,"csv"
         if request.query.type=="csv":
@@ -71,7 +71,7 @@ def performace_mch(date):
 
 @route(base_url+'/patients/mch')
 def patients_mch():
-    if api_key.check_key(request.query.api_key,"mch"):
+    if api_key.check_key(request.query.api_key,"mch","patients"):
         api_key.accessed(request.query.api_key)
         if request.query.type=="csv":
             data=get_data.patients(database="mch_aggregation")
@@ -81,9 +81,10 @@ def patients_mch():
             return get_data.patients(database="mch_aggregation")
     else:
         abort(401, "Access denied.")
+
 @route(base_url+'/patients/hiv')
 def patients_hiv():
-    if api_key.check_key(request.query.api_key,"hiv"):
+    if api_key.check_key(request.query.api_key,"hiv","patients"):
         api_key.accessed(request.query.api_key)
         if request.query.type=="csv":
             data=get_data.patients(database="openmrs_aggregation")
@@ -120,9 +121,82 @@ def report_hiv(location):
     else:
         end=datetime.datetime.now()
     return get_data.report_mch(start,end,location)
+@route(base_url+'/verification/who/hiv')
+def verification_who():
+    if api_key.check_key(request.query.api_key,"hiv","verification_who"):
+        api_key.accessed(request.query.api_key)
+        if request.query.type=="csv":
+            data=get_data.verification_who(database="openmrs_aggregation")
+            return helper_functions.verification_to_csv(data)
 
+        else:
+            return get_data.verification_who(database="openmrs_aggregation")
+    else:
+        abort(401, "Access denied.")
+@route(base_url+'/verification/cd4/hiv')
+def verification_cd4():
+    if api_key.check_key(request.query.api_key,"hiv","verification_cd4"):
+        api_key.accessed(request.query.api_key)
+        if request.query.type=="csv":
+            data=get_data.verification_cd4(database="openmrs_aggregation")
+            return helper_functions.verification_to_csv(data)
 
+        else:
+            return get_data.verification_cd4(database="openmrs_aggregation")
+    else:
+        abort(401, "Access denied.")
 
+@route(base_url+'/verification/followup/hiv')
+def verification_followup():
+    if api_key.check_key(request.query.api_key,"hiv","verification_followup"):
+        api_key.accessed(request.query.api_key)
+        if request.query.type=="csv":
+            data=get_data.verification_followup(database="openmrs_aggregation")
+            return helper_functions.verification_to_csv(data)
+
+        else:
+            return get_data.verification_followup(database="openmrs_aggregation")
+    else:
+        abort(401, "Access denied.")
+
+@route(base_url+'/verification/missedappointment/hiv')
+def verification_missed_appointment():
+    if api_key.check_key(request.query.api_key,"hiv","verification_missed_appointment"):
+        api_key.accessed(request.query.api_key)
+        if request.query.type=="csv":
+            data=get_data.verification_missed_appointment(database="openmrs_aggregation")
+            return helper_functions.verification_to_csv(data)
+
+        else:
+            return get_data.verification_missed_appointment(database="openmrs_aggregation")
+    else:
+        abort(401, "Access denied.")
+
+@route(base_url+'/verification/eligible/hiv')
+def verification_eligible():
+    if api_key.check_key(request.query.api_key,"hiv","verification_eligible"):
+        api_key.accessed(request.query.api_key)
+        if request.query.type=="csv":
+            data=get_data.verification_eligible(database="openmrs_aggregation")
+            return helper_functions.verification_to_csv(data)
+
+        else:
+            return get_data.verification_eligible(database="openmrs_aggregation")
+    else:
+        abort(401, "Access denied.")
+
+@route(base_url+'/neel/hiv')
+def verification_eligible():
+    if api_key.check_key(request.query.api_key,"hiv","neel"):
+        api_key.accessed(request.query.api_key)
+        if request.query.type=="csv":
+            data=get_data.neel(database="openmrs_aggregation")
+            return helper_functions.patients_to_csv(data)
+
+        else:
+            return get_data.neel(database="openmrs_aggregation")
+    else:
+        abort(401, "Access denied.")
 
 
 if __name__=="__main__":

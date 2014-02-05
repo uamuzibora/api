@@ -15,16 +15,10 @@ def db_connect():
     """
     
     return dbs.DB(user=login,password=password,database=database,host=host,driver="mysql")
-
-
-
-
 # Define the data we need to get 
 # run through all patients and construct master dictionary with all needed data
 # Categorize
 # Write to mongodb
-
-
 # Want age and sex for evryone
 
 db=db_connect()
@@ -37,15 +31,15 @@ data={} # Master directory with all patient information
 #  Multiple text 
 multiple_text={"who_stage_f":5356,"who_stage_l":5356,"patient_source":6245,"reason_to_follow_up":6281,"last_adherence":6118,"eoa_notstartedart":6496,"eoa_notreviewed":6498}
 which={"who_stage_f":"first","who_stage_l":"last","patient_source":"first","reason_to_follow_up":"last","last_adherence":"last","eoa_notstartedart":"last","eoa_notreviewed":"last"}
-multiple_dates={"next_appointment":5096}
-which_dates={"next_appointment":"last"}
+multiple_dates={"next_appointment":5096,"date_hiv_positive":6259}
+which_dates={"next_appointment":"last","date_hiv_positive":"first"}
 # Multiple numeric
 multiple_numeric={"cd4_count":5497}
 #Boolean
 boolean_sql={"eligible_for_art":"select patient_id from patient where patient_id in (select distinct(person_id) from obs where concept_id=5356 and (value_coded=1206 or value_coded=1207) and voided=0) or patient_id in (select distinct(person_id) from obs where concept_id=5497 and value_numeric<350 and voided=0)","hiv_positive_date":"select distinct(person_id) as patient_id from obs where obs.concept_id=6259","art_eligible_date":"select distinct(person_id) as patient_id from obs where obs.concept_id=6260","on_art":"select patient_id from (select start_date,patient_id from orders where discontinued=0 and voided=0 group by start_date,patient_id ) as s order by start_date","followed_up":"select patient_id from encounter where form_id=4 and voided=0","on_cotrimoxazole":"select distinct(person_id) as patient_id from obs where concept_id=6113"}
 #Multpile Boolean
-multiple_boolean={"eoa_paper":6491,"eoa_clinicalreview":6492,"eoa_startedart":6499}
-which_boolean={"eoa_paper":"last","eoa_clinicalreview":"last","eoa_startedart":"last"}
+multiple_boolean={"eoa_paper":6491,"eoa_clinicalreview":6492,"eoa_startedart":6499,"cd4_present":6375}
+which_boolean={"eoa_paper":"last","eoa_clinicalreview":"last","eoa_startedart":"last","cd4_present":"first"}
 # Get all patient ids and other needed fields from the patient table
 res=db.query_dict('Select patient_id from patient where voided=0 order by patient_id')
 for r in res:
@@ -72,12 +66,40 @@ for r in res:
         pregnancy[r["person_id"]].append(r["obs_datetime"])
     else:
         pregnancy[r["person_id"]]=[r["obs_datetime"]]
+
+res=db.query_dict("select person_id,obs_datetime,value_datetime from obs where concept_id=5596 and voided=0")
+edd={}
+for r in res:
+    if r["person_id"] in edd:
+        edd[r["person_id"]][r["obs_datetime"]]=r["value_datetime"]
+    else:
+        edd[r["person_id"]]={r["obs_datetime"]:r["value_datetime"]}
+
+edd2={}
+for pid in edd.keys():
+    if pid in pregnancy.keys():
+        pregnancy[pid]=sorted(pregnancy[pid])
+        for obs_date in pregnancy[pid]:
+            if obs_date not in edd[pid].keys():
+                edd_date="Missing"
+            else:
+                edd_date=edd[pid][obs_date]
+            if pid in edd2.keys():
+                edd2[pid].append(edd_date)
+            else:
+                edd2[pid]=[edd_date]
+    else:
+       edd2[pid]=[edd[pid][key] for key in edd[pid]] 
 for key in data.keys():
     if key in pregnancy.keys():
         data[key]["pregnancy"]=pregnancy[key]
     else:
         data[key]["pregnancy"]=0
-
+for key in data.keys():
+    if key in edd2.keys():
+        data[key]["edd"]=edd2[key]
+    else:
+        data[key]["edd"]=0
 print "age and sex"
 # Get age and sex from person table
 res=db.query_dict("Select person_id,gender,birthdate from person where voided=0 order by person_id")
